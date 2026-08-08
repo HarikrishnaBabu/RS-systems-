@@ -1,52 +1,101 @@
 /* =============================================================
    ADMIN MONITOR — admin.js
    ---------------------------------------------------------------
-   Read-only live view of every entity currently on the network.
-   Unlike the family tracker's admin page, this doesn't require a
-   separate login — the /entities data is already open-read to any
-   signed-in (anonymous) user by design, since drivers/pedestrians
-   need to see each other too. This page just visualizes all of it
-   at once instead of from one vehicle's point of view.
+   Requires a real Firebase email/password sign-in (same admin
+   account used by the family tracker's admin.html, if you're
+   reusing that project) before showing anything.
+
+   Honest note on what this does and doesn't protect: /entities
+   itself is still readable by any anonymously-signed-in visitor,
+   because drivers and pedestrians need that access to see each
+   other on their own pages. This login gates the admin UI, not
+   the underlying data — a technically determined person could
+   still query Firebase directly. Treat this as a practical
+   deterrent for a community/demo tool, not airtight security.
    ============================================================= */
 
+const loginCard = document.getElementById("loginCard");
 const loadingCard = document.getElementById("loadingCard");
 const errorCard = document.getElementById("errorCard");
 const errorMessage = document.getElementById("errorMessage");
 const dashboardCard = document.getElementById("dashboardCard");
+
+const adminEmail = document.getElementById("adminEmail");
+const adminPassword = document.getElementById("adminPassword");
+const loginBtn = document.getElementById("loginBtn");
+const loginError = document.getElementById("loginError");
 const retryBtn = document.getElementById("retryBtn");
+const logoutBtn = document.getElementById("logoutBtn");
 
 const driverCount = document.getElementById("driverCount");
 const pedCount = document.getElementById("pedCount");
 const emergencyCount = document.getElementById("emergencyCount");
 const entityList = document.getElementById("entityList");
 
-let mapState = null; // { map, entityMarkers } — no ego marker needed here
+let mapState = null;
 let unsubscribe = null;
-let focusedId = null;
 
+/* -----------------------------------------------------------
+   LOGIN / LOGOUT
+   ----------------------------------------------------------- */
+loginBtn.addEventListener("click", () => {
+  loginError.classList.add("hidden");
+  const email = adminEmail.value.trim();
+  const password = adminPassword.value;
+
+  if (!email || !password) {
+    loginError.textContent = "Please enter both email and password.";
+    loginError.classList.remove("hidden");
+    return;
+  }
+
+  auth.signInWithEmailAndPassword(email, password).catch((err) => {
+    loginError.textContent = "Sign-in failed: " + err.message;
+    loginError.classList.remove("hidden");
+  });
+  // onAuthStateChanged below takes it from here on success
+});
+
+logoutBtn.addEventListener("click", () => {
+  auth.signOut();
+});
+
+auth.onAuthStateChanged((user) => {
+  // Anonymous users (e.g. if a driver/pedestrian tab is also open in
+  // this browser) don't count as "logged in" for this admin page —
+  // only a real email/password account does.
+  const isRealAdmin = user && !user.isAnonymous;
+
+  if (isRealAdmin) {
+    loginCard.classList.add("hidden");
+    showCard(loadingCard);
+    connect();
+  } else {
+    dashboardCard.classList.add("hidden");
+    errorCard.classList.add("hidden");
+    loadingCard.classList.add("hidden");
+    loginCard.classList.remove("hidden");
+    if (unsubscribe) {
+      unsubscribe();
+      unsubscribe = null;
+    }
+  }
+});
+
+/* -----------------------------------------------------------
+   CONNECT: subscribe to the live entities feed once logged in
+   ----------------------------------------------------------- */
 function connect() {
-  showCard(loadingCard);
-
-  signInAnon()
-    .then(() => {
-      showCard(dashboardCard);
-      initMap();
-      unsubscribe = subscribeEntities((entities) => {
-        renderAll(entities);
-      });
-    })
-    .catch((err) => {
-      showError(
-        "⚠️ Couldn't connect to the safety network. Check firebase-config.js has your real project values. (" +
-          err.message +
-          ")"
-      );
-    });
+  showCard(dashboardCard);
+  initMap();
+  unsubscribe = subscribeEntities((entities) => {
+    renderAll(entities);
+  });
 }
 
 function initMap() {
   if (mapState) return;
-  const map = L.map("map").setView([20, 0], 2); // world view until we see real data
+  const map = L.map("map").setView([20, 0], 2);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: "&copy; OpenStreetMap contributors",
     maxZoom: 19,
@@ -65,12 +114,14 @@ function showError(msg) {
   showCard(errorCard);
 }
 
+/* -----------------------------------------------------------
+   RENDER: counts, map markers, and the tappable list
+   ----------------------------------------------------------- */
 function renderAll(entities) {
   const list = Object.keys(entities)
     .map((id) => ({ id, ...entities[id] }))
     .filter((e) => typeof e.lat === "number" && typeof e.lng === "number");
 
-  // ---- Counts ----
   const drivers = list.filter((e) => e.role === "driver");
   const peds = list.filter((e) => e.role === "pedestrian");
   const emergencies = list.filter((e) => e.role === "emergency");
@@ -78,7 +129,6 @@ function renderAll(entities) {
   pedCount.textContent = `🚶 ${peds.length}`;
   emergencyCount.textContent = `🚨 ${emergencies.length}`;
 
-  // ---- Map markers (reuses the same helper driver.js/pedestrian.js use) ----
   if (mapState) {
     updateEntityMarkers(mapState, list);
     if (!mapState.hasFitOnce && list.length > 0) {
@@ -88,7 +138,6 @@ function renderAll(entities) {
     }
   }
 
-  // ---- List ----
   if (list.length === 0) {
     entityList.innerHTML = `<p style="color:var(--text-muted); padding:16px 0;">No one is currently connected to the network.</p>`;
     return;
@@ -115,7 +164,6 @@ function renderAll(entities) {
     })
     .join("");
 
-  // Tap a row to fly the map to that entity
   entityList.querySelectorAll(".child-row").forEach((row) => {
     row.addEventListener("click", () => {
       const id = row.dataset.id;
@@ -132,4 +180,3 @@ function escapeHtml(str) {
 }
 
 retryBtn.addEventListener("click", connect);
-connect();
