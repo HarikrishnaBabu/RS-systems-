@@ -43,6 +43,7 @@ let unsubscribe = null;
 let latestEntities = {};
 let myLat = null, myLng = null, myHeading = 0, mySpeedKmh = 0, myAccuracy = null;
 let headingKnown = false;
+let mapState = null; // Leaflet map state, created on first position fix
 
 /* -----------------------------------------------------------
    START
@@ -110,6 +111,13 @@ function onPosition(position) {
 
   showCard(dashboardCard);
 
+  // ---- Create the map on the very first fix, otherwise just move it ----
+  if (!mapState) {
+    mapState = createEntityMap("map", latitude, longitude, "🚗", "#22d3ee");
+  } else {
+    updateEgoPosition(mapState, latitude, longitude);
+  }
+
   // ---- Update stats ----
   speedValue.textContent = `${mySpeedKmh.toFixed(0)} km/h`;
   headingValue.textContent = headingKnown ? `${Math.round(myHeading)}°` : "-- (move to detect)";
@@ -149,6 +157,10 @@ function stopDriving() {
     unsubscribe = null;
   }
   removeEntity(entityId);
+  if (mapState) {
+    mapState.map.remove();
+    mapState = null;
+  }
   showCard(infoCard);
 }
 
@@ -178,6 +190,10 @@ function renderAll() {
   const nearby = computeNearby();
   renderAlerts(nearby);
   renderRadar(nearby);
+  if (mapState) {
+    updateEntityMarkers(mapState, nearby);
+    updateZoneMarkers(mapState, lastZones);
+  }
   nearbyCount.textContent = `${nearby.length} nearby`;
 }
 
@@ -317,4 +333,5 @@ function renderRadar(nearby) {
    ============================================================= */
 shareBtn.addEventListener("click", startDriving);
 retryBtn.addEventListener("click", startDriving);
+stopBtn.addEventListener("click", stopDriving);
 stopBtn.addEventListener("click", stopDriving);
