@@ -30,6 +30,7 @@ let watchId = null;
 let unsubscribe = null;
 let latestEntities = {};
 let myLat = null, myLng = null;
+let mapState = null;
 
 function startSharing() {
   if (!("geolocation" in navigator)) {
@@ -84,6 +85,12 @@ function onPosition(position) {
 
   showCard(dashboardCard);
 
+  if (!mapState) {
+    mapState = createEntityMap("map", myLat, myLng, "🚶", "#f59e0b");
+  } else {
+    updateEgoPosition(mapState, myLat, myLng);
+  }
+
   writeEntity(entityId, {
     role: "pedestrian",
     name: pedNameInput.value.trim(),
@@ -105,6 +112,10 @@ function stopSharing() {
     unsubscribe = null;
   }
   removeEntity(entityId);
+  if (mapState) {
+    mapState.map.remove();
+    mapState = null;
+  }
   showCard(infoCard);
 }
 
@@ -135,6 +146,7 @@ function renderAll() {
   nearby.sort((a, b) => a.distance - b.distance);
 
   nearbyCount.textContent = `${nearby.length} nearby`;
+  if (mapState) updateEntityMarkers(mapState, nearby);
 
   // ---- Alert banners ----
   const banners = [];
