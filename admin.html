@@ -19,8 +19,22 @@
       <p class="subtitle">Every driver, pedestrian &amp; emergency vehicle currently connected</p>
     </header>
 
+    <!-- ---------- Login card ---------- -->
+    <section class="card" id="loginCard">
+      <p>Admin sign-in required to view the live network monitor.</p>
+
+      <label class="field-label" for="adminEmail">Email</label>
+      <input type="email" id="adminEmail" class="text-input" autocomplete="username" />
+
+      <label class="field-label" for="adminPassword">Password</label>
+      <input type="password" id="adminPassword" class="text-input" autocomplete="current-password" />
+
+      <button id="loginBtn" class="btn btn-primary">🔐 Sign In</button>
+      <p id="loginError" class="hidden" style="color:#fca5a5; margin-top:10px; font-size:0.85rem;"></p>
+    </section>
+
     <!-- ---------- Connecting card ---------- -->
-    <section class="card" id="loadingCard">
+    <section class="card hidden" id="loadingCard">
       <div class="spinner"></div>
       <p>Connecting to the safety network...</p>
     </section>
@@ -37,6 +51,7 @@
         <span class="status-badge" id="driverCount">🚗 0</span>
         <span class="status-badge" id="pedCount">🚶 0</span>
         <span class="status-badge" id="emergencyCount">🚨 0</span>
+        <button id="logoutBtn" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:0.8rem;">Sign Out</button>
       </div>
 
       <div id="map" class="map-container" style="height:320px;"></div>
@@ -46,7 +61,7 @@
     </section>
 
     <footer class="app-footer">
-      <p>Read-only view of the shared /entities network — no login required, since this data is broadcast to everyone on the network by design.</p>
+      <p>Sign in required to view this page. Note: nearby drivers/pedestrians still have their own limited read access to the shared network data, since that's what lets them see each other — this login only gates this combined view.</p>
     </footer>
   </main>
 
