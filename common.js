@@ -143,6 +143,8 @@ function updateZoneMarkers(mapState, zones) {
     }
   });
 }
+/* -----------------------------------------------------------
+   A random-ish but stable ID for this browser tab's session,
    used as this entity's key in Firebase. Regenerated each visit
    — this is a lightweight demo system, not an account system.
    ----------------------------------------------------------- */
