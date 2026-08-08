@@ -24,8 +24,125 @@ window.addEventListener("error", (event) => {
   banner.classList.remove("hidden");
 });
 
-/* -----------------------------------------------------------
-   A random-ish but stable ID for this browser tab's session,
+/* =============================================================
+   LEAFLET MAP HELPERS — shared by driver.js, pedestrian.js,
+   emergency.js. Renders a real OpenStreetMap view alongside (or
+   instead of) the radar, with emoji markers per entity role.
+   ============================================================= */
+
+/* Build a colored circular emoji marker icon */
+function emojiDivIcon(emoji, bgColor) {
+  return L.divIcon({
+    html: `<div style="
+      background:${bgColor};
+      width:30px; height:30px;
+      border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:15px;
+      border:2px solid #fff;
+      box-shadow:0 2px 8px rgba(0,0,0,0.45);
+    ">${emoji}</div>`,
+    className: "", // prevent Leaflet's default icon styling from leaking in
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+  });
+}
+
+const ROLE_COLORS = { driver: "#3b82f6", pedestrian: "#f59e0b", emergency: "#ef4444" };
+const ROLE_ICONS_BY_SUBROLE = {
+  driver: "🚗",
+  pedestrian: "🚶",
+  ambulance: "🚑",
+  fire: "🚒",
+};
+
+/* Create a Leaflet map inside the given container id, centered on
+   the given starting position. Returns a small state object used
+   by updateEntityMap() to keep markers in sync on later calls. */
+function createEntityMap(containerId, lat, lng, egoEmoji, egoColor) {
+  const map = L.map(containerId).setView([lat, lng], 16);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "&copy; OpenStreetMap contributors",
+    maxZoom: 19,
+  }).addTo(map);
+
+  const egoMarker = L.marker([lat, lng], {
+    icon: emojiDivIcon(egoEmoji, egoColor),
+    zIndexOffset: 1000,
+  }).addTo(map);
+
+  setTimeout(() => map.invalidateSize(), 200);
+
+  return { map, egoMarker, entityMarkers: {}, zoneMarkers: {}, hasAutoFitted: false };
+}
+
+/* Move the ego marker to the latest position (and gently re-center
+   the map, but only until the user has manually panned/zoomed — we
+   track that with a one-time "hasAutoFitted" flag to avoid yanking
+   the map around under someone who's trying to look at it). */
+function updateEgoPosition(mapState, lat, lng) {
+  mapState.egoMarker.setLatLng([lat, lng]);
+  if (!mapState.hasAutoFitted) {
+    mapState.map.setView([lat, lng], 16);
+  }
+}
+
+/* Sync the set of "other entity" markers (vehicles/pedestrians/
+   emergency vehicles) to match the given list. Each item needs at
+   least { id, role, subrole, lat, lng }. */
+function updateEntityMarkers(mapState, entities) {
+  const activeIds = new Set();
+
+  entities.forEach((e) => {
+    activeIds.add(e.id);
+    const emoji =
+      e.role === "emergency" ? ROLE_ICONS_BY_SUBROLE[e.subrole] || "🚨" : ROLE_ICONS_BY_SUBROLE[e.role] || "❓";
+    const color = ROLE_COLORS[e.role] || "#94a3b8";
+
+    if (!mapState.entityMarkers[e.id]) {
+      mapState.entityMarkers[e.id] = L.marker([e.lat, e.lng], {
+        icon: emojiDivIcon(emoji, color),
+      }).addTo(mapState.map);
+    } else {
+      mapState.entityMarkers[e.id].setLatLng([e.lat, e.lng]);
+    }
+  });
+
+  // Remove markers for entities that dropped off
+  Object.keys(mapState.entityMarkers).forEach((id) => {
+    if (!activeIds.has(id)) {
+      mapState.map.removeLayer(mapState.entityMarkers[id]);
+      delete mapState.entityMarkers[id];
+    }
+  });
+}
+
+/* Plot school/hospital zones (from getNearbyZones) as static markers.
+   Keyed by a stable-ish string since Overpass elements don't have a
+   simple short ID we've kept around. */
+function updateZoneMarkers(mapState, zones) {
+  const activeKeys = new Set();
+  (zones || []).forEach((z) => {
+    const key = `${z.type}-${z.lat.toFixed(5)}-${z.lng.toFixed(5)}`;
+    activeKeys.add(key);
+    if (!mapState.zoneMarkers[key]) {
+      const emoji = z.type === "school" ? "🏫" : "🏥";
+      const color = z.type === "school" ? "#f59e0b" : "#3b82f6";
+      mapState.zoneMarkers[key] = L.marker([z.lat, z.lng], {
+        icon: emojiDivIcon(emoji, color),
+        opacity: 0.85,
+      })
+        .bindPopup(z.name)
+        .addTo(mapState.map);
+    }
+  });
+  Object.keys(mapState.zoneMarkers).forEach((key) => {
+    if (!activeKeys.has(key)) {
+      mapState.map.removeLayer(mapState.zoneMarkers[key]);
+      delete mapState.zoneMarkers[key];
+    }
+  });
+}
    used as this entity's key in Firebase. Regenerated each visit
    — this is a lightweight demo system, not an account system.
    ----------------------------------------------------------- */
