@@ -334,4 +334,3 @@ function renderRadar(nearby) {
 shareBtn.addEventListener("click", startDriving);
 retryBtn.addEventListener("click", startDriving);
 stopBtn.addEventListener("click", stopDriving);
-stopBtn.addEventListener("click", stopDriving);
