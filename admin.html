@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Admin — Road Safety Network</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+<body>
+  <main class="app">
+    <a class="back-link" href="index.html">← Change role</a>
+
+    <div id="debugBanner" class="debug-banner hidden"></div>
+
+    <header class="app-header">
+      <h1>🛰️ Live Network Monitor</h1>
+      <p class="subtitle">Every driver, pedestrian &amp; emergency vehicle currently connected</p>
+    </header>
+
+    <!-- ---------- Connecting card ---------- -->
+    <section class="card" id="loadingCard">
+      <div class="spinner"></div>
+      <p>Connecting to the safety network...</p>
+    </section>
+
+    <!-- ---------- Error ---------- -->
+    <section class="card hidden error-card" id="errorCard">
+      <p id="errorMessage"></p>
+      <button id="retryBtn" class="btn btn-secondary">🔄 Try Again</button>
+    </section>
+
+    <!-- ---------- Dashboard ---------- -->
+    <section class="card hidden" id="dashboardCard">
+      <div class="status-row">
+        <span class="status-badge" id="driverCount">🚗 0</span>
+        <span class="status-badge" id="pedCount">🚶 0</span>
+        <span class="status-badge" id="emergencyCount">🚨 0</span>
+      </div>
+
+      <div id="map" class="map-container" style="height:320px;"></div>
+
+      <!-- List of all connected entities, tap to focus the map -->
+      <div class="children-list" id="entityList"></div>
+    </section>
+
+    <footer class="app-footer">
+      <p>Read-only view of the shared /entities network — no login required, since this data is broadcast to everyone on the network by design.</p>
+    </footer>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="common.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
