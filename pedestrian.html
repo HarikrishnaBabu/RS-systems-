@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Pedestrian — Road Safety Network</title>
   <link rel="stylesheet" href="style.css" />
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 </head>
 <body>
   <main class="app">
@@ -51,6 +54,9 @@
 
       <div id="alertsArea"></div>
 
+      <!-- Real-world map view -->
+      <div id="map" class="map-container"></div>
+
       <!-- Sorted list of nearby vehicles/emergency vehicles by distance -->
       <div class="children-list" id="nearbyList">
         <p class="empty-state" style="color:var(--text-muted); padding:16px 0;">No vehicles detected nearby.</p>
@@ -68,6 +74,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="firebase-config.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="common.js"></script>
   <script src="pedestrian.js"></script>
 </body>
