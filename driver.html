@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Driver — Road Safety Network</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <a class="back-link" href="index.html">← Change role</a>
+
+    <div id="debugBanner" class="debug-banner hidden"></div>
+
+    <header class="app-header">
+      <h1>🚗 Driver Mode</h1>
+      <p class="subtitle">Live radar of nearby vehicles, pedestrians &amp; zones</p>
+    </header>
+
+    <!-- ---------- Info / permission card ---------- -->
+    <section class="card" id="infoCard">
+      <p>
+        This shares your GPS position, speed, and heading so nearby
+        drivers and pedestrians using this site can be shown on each
+        other's radar. It also checks OpenStreetMap for nearby school
+        and hospital zones to warn you as you approach.
+      </p>
+
+      <label class="field-label" for="driverName">Vehicle / driver label</label>
+      <input type="text" id="driverName" class="text-input" placeholder="e.g. Blue Sedan" autocomplete="off" />
+
+      <button id="shareBtn" class="btn btn-primary">📡 Start Driving Mode</button>
+    </section>
+
+    <!-- ---------- Loading ---------- -->
+    <section class="card hidden" id="loadingCard">
+      <div class="spinner"></div>
+      <p>Waiting for GPS signal...</p>
+    </section>
+
+    <!-- ---------- Error ---------- -->
+    <section class="card hidden error-card" id="errorCard">
+      <p id="errorMessage"></p>
+      <button id="retryBtn" class="btn btn-secondary">🔄 Try Again</button>
+    </section>
+
+    <!-- ---------- Dashboard ---------- -->
+    <section class="card hidden" id="dashboardCard">
+
+      <div class="status-row">
+        <span class="status-badge"><span class="dot dot-live"></span> Broadcasting</span>
+        <span class="status-badge" id="nearbyCount">0 nearby</span>
+      </div>
+
+      <!-- Zone / emergency alert banners appear here, stacked -->
+      <div id="alertsArea"></div>
+
+      <!-- ADAS-style relative radar -->
+      <div class="radar-wrap">
+        <svg id="radarSvg" viewBox="0 0 320 320" width="100%"></svg>
+        <div class="radar-legend">
+          <span><span class="legend-swatch" style="background:#3b82f6"></span> Vehicle</span>
+          <span><span class="legend-swatch" style="background:#f59e0b"></span> Pedestrian</span>
+          <span><span class="legend-swatch" style="background:#ef4444"></span> Emergency</span>
+          <span><span class="legend-swatch" style="background:#22d3ee"></span> You</span>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat">
+          <span class="stat-label">Speed</span>
+          <span class="stat-value" id="speedValue">--</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Heading</span>
+          <span class="stat-value" id="headingValue">--</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Accuracy</span>
+          <span class="stat-value" id="accValue">--</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Last Update</span>
+          <span class="stat-value" id="timeValue">--</span>
+        </div>
+      </div>
+
+      <button id="stopBtn" class="btn btn-secondary">⏹️ Stop Driving Mode</button>
+    </section>
+
+    <footer class="app-footer">
+      <p>Advisory only — GPS has meter-level accuracy and delay. Always drive attentively.</p>
+    </footer>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="common.js"></script>
+  <script src="driver.js"></script>
+</body>
+</html>

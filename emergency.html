@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Emergency Vehicle — Road Safety Network</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <a class="back-link" href="index.html">← Change role</a>
+
+    <div id="debugBanner" class="debug-banner hidden"></div>
+
+    <header class="app-header">
+      <h1>🚨 Emergency Vehicle Mode</h1>
+      <p class="subtitle">Broadcast priority to nearby drivers &amp; pedestrians</p>
+    </header>
+
+    <!-- ---------- Setup card ---------- -->
+    <section class="card" id="infoCard">
+      <p>
+        This broadcasts your position to nearby drivers. When you switch
+        Emergency Mode ON, drivers and pedestrians within range get a
+        "pull over" alert.
+      </p>
+
+      <label class="field-label" for="vehicleName">Call sign / unit label</label>
+      <input type="text" id="vehicleName" class="text-input" placeholder="e.g. Ambulance 12" autocomplete="off" />
+
+      <label class="field-label">Vehicle type</label>
+      <div class="subrole-grid">
+        <button type="button" class="subrole-btn selected" id="ambulanceBtn" data-subrole="ambulance">🚑 Ambulance</button>
+        <button type="button" class="subrole-btn" id="fireBtn" data-subrole="fire">🚒 Fire Engine</button>
+      </div>
+
+      <button id="shareBtn" class="btn btn-primary">📡 Start Broadcasting</button>
+    </section>
+
+    <!-- ---------- Loading ---------- -->
+    <section class="card hidden" id="loadingCard">
+      <div class="spinner"></div>
+      <p>Waiting for GPS signal...</p>
+    </section>
+
+    <!-- ---------- Error ---------- -->
+    <section class="card hidden error-card" id="errorCard">
+      <p id="errorMessage"></p>
+      <button id="retryBtn" class="btn btn-secondary">🔄 Try Again</button>
+    </section>
+
+    <!-- ---------- Dashboard ---------- -->
+    <section class="card hidden" id="dashboardCard">
+      <div class="status-row">
+        <span class="status-badge"><span class="dot dot-live"></span> Broadcasting</span>
+        <span class="status-badge" id="alertedCount">0 drivers in range</span>
+      </div>
+
+      <!-- Big emergency mode toggle -->
+      <button id="emergencyToggle" class="btn btn-toggle" style="margin-bottom:16px;">
+        🚨 Emergency Mode: OFF
+      </button>
+
+      <div class="stats-grid">
+        <div class="stat">
+          <span class="stat-label">Speed</span>
+          <span class="stat-value" id="speedValue">--</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Accuracy</span>
+          <span class="stat-value" id="accValue">--</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Last Update</span>
+          <span class="stat-value" id="timeValue">--</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Alert Radius</span>
+          <span class="stat-value">400 m</span>
+        </div>
+      </div>
+
+      <button id="stopBtn" class="btn btn-secondary">⏹️ Stop Broadcasting</button>
+    </section>
+
+    <footer class="app-footer">
+      <p>Demo system — not a substitute for official emergency dispatch systems.</p>
+    </footer>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="common.js"></script>
+  <script src="emergency.js"></script>
+</body>
+</html>

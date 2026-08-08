@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Pedestrian — Road Safety Network</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <a class="back-link" href="index.html">← Change role</a>
+
+    <div id="debugBanner" class="debug-banner hidden"></div>
+
+    <header class="app-header">
+      <h1>🚶 Pedestrian Mode</h1>
+      <p class="subtitle">Get warned when a vehicle is nearby</p>
+    </header>
+
+    <!-- ---------- Info / permission card ---------- -->
+    <section class="card" id="infoCard">
+      <p>
+        This shares your GPS position so nearby drivers using this site
+        can see you, and warns you when a vehicle is close by.
+      </p>
+
+      <label class="field-label" for="pedName">Your name</label>
+      <input type="text" id="pedName" class="text-input" placeholder="e.g. Alex" autocomplete="off" />
+
+      <button id="shareBtn" class="btn btn-primary">📡 Start Sharing</button>
+    </section>
+
+    <!-- ---------- Loading ---------- -->
+    <section class="card hidden" id="loadingCard">
+      <div class="spinner"></div>
+      <p>Waiting for GPS signal...</p>
+    </section>
+
+    <!-- ---------- Error ---------- -->
+    <section class="card hidden error-card" id="errorCard">
+      <p id="errorMessage"></p>
+      <button id="retryBtn" class="btn btn-secondary">🔄 Try Again</button>
+    </section>
+
+    <!-- ---------- Dashboard ---------- -->
+    <section class="card hidden" id="dashboardCard">
+      <div class="status-row">
+        <span class="status-badge"><span class="dot dot-live"></span> Broadcasting</span>
+        <span class="status-badge" id="nearbyCount">0 nearby</span>
+      </div>
+
+      <div id="alertsArea"></div>
+
+      <!-- Sorted list of nearby vehicles/emergency vehicles by distance -->
+      <div class="children-list" id="nearbyList">
+        <p class="empty-state" style="color:var(--text-muted); padding:16px 0;">No vehicles detected nearby.</p>
+      </div>
+
+      <button id="stopBtn" class="btn btn-secondary">⏹️ Stop Sharing</button>
+    </section>
+
+    <footer class="app-footer">
+      <p>Advisory only — always look before crossing.</p>
+    </footer>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="common.js"></script>
+  <script src="pedestrian.js"></script>
+</body>
+</html>
