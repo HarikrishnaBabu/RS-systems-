@@ -35,6 +35,8 @@ let latestEntities = {};
 let myLat = null, myLng = null;
 let subrole = "ambulance";
 let emergencyActive = false;
+let mapState = null;
+let lastZones = [];
 
 /* ---- Vehicle type toggle ---- */
 [ambulanceBtn, fireBtn].forEach((btn) => {
@@ -113,12 +115,26 @@ function onPosition(position) {
 
   showCard(dashboardCard);
 
+  if (!mapState) {
+    const egoEmoji = subrole === "fire" ? "🚒" : "🚑";
+    mapState = createEntityMap("map", myLat, myLng, egoEmoji, "#ef4444");
+  } else {
+    updateEgoPosition(mapState, myLat, myLng);
+  }
+
   speedValue.textContent = `${lastSpeedKmh.toFixed(0)} km/h`;
   accValue.textContent = `${Math.round(lastAccuracy)} m`;
   timeValue.textContent = new Date(position.timestamp).toLocaleTimeString();
 
   broadcastCurrentState();
   renderAlertedCount();
+
+  // Ambulances/fire engines care about nearby hospitals especially —
+  // plot them on the map the same way driver mode does.
+  getNearbyZones(myLat, myLng).then((zones) => {
+    lastZones = zones;
+    if (mapState) updateZoneMarkers(mapState, lastZones);
+  });
 }
 
 function broadcastCurrentState() {
@@ -138,13 +154,19 @@ function broadcastCurrentState() {
 function renderAlertedCount() {
   if (myLat === null) return;
   let count = 0;
+  const nearbyEntities = [];
   for (const id in latestEntities) {
     if (id === entityId) continue;
     const e = latestEntities[id];
-    if (!e || (e.role !== "driver" && e.role !== "pedestrian")) continue;
-    if (distanceMeters(myLat, myLng, e.lat, e.lng) <= ALERT_RADIUS_M) count++;
+    if (!e || typeof e.lat !== "number") continue;
+    const dist = distanceMeters(myLat, myLng, e.lat, e.lng);
+    if (e.role === "driver" || e.role === "pedestrian") {
+      nearbyEntities.push({ id, ...e });
+      if (dist <= ALERT_RADIUS_M) count++;
+    }
   }
   alertedCount.textContent = `${count} in range`;
+  if (mapState) updateEntityMarkers(mapState, nearbyEntities);
 }
 
 function stopBroadcasting() {
@@ -157,6 +179,10 @@ function stopBroadcasting() {
     unsubscribe = null;
   }
   removeEntity(entityId);
+  if (mapState) {
+    mapState.map.remove();
+    mapState = null;
+  }
   showCard(infoCard);
 }
 
