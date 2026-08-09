@@ -56,6 +56,17 @@
 
       <div id="map" class="map-container" style="height:320px;"></div>
 
+      <!-- Filter + search controls -->
+      <div class="filter-row" id="roleFilterRow">
+        <button type="button" class="filter-chip selected" data-filter="all">All</button>
+        <button type="button" class="filter-chip" data-filter="driver">🚗 Drivers</button>
+        <button type="button" class="filter-chip" data-filter="pedestrian">🚶 Pedestrians</button>
+        <button type="button" class="filter-chip" data-filter="emergency">🚨 Emergency</button>
+      </div>
+      <input type="text" id="searchInput" class="text-input" placeholder="Search by name or vehicle number..." style="margin-bottom:10px;" />
+
+      <button id="clearStaleBtn" class="btn btn-secondary" style="margin-bottom:14px;">🧹 Clear Stale Entries</button>
+
       <!-- List of all connected entities, tap to focus the map -->
       <div class="children-list" id="entityList"></div>
     </section>
