@@ -32,6 +32,12 @@ let latestEntities = {};
 let myLat = null, myLng = null;
 let mapState = null;
 
+/* Prefill from a saved profile, if this browser has one */
+const savedProfile = loadProfile("rs_pedestrian_profile");
+if (savedProfile) {
+  pedNameInput.value = savedProfile.name || "";
+}
+
 function startSharing() {
   if (!("geolocation" in navigator)) {
     showError("❌ This browser doesn't support the Geolocation API.");
@@ -46,10 +52,13 @@ function startSharing() {
   }
   pedNameInput.style.borderColor = "";
 
+  saveProfile("rs_pedestrian_profile", { name });
+
   showCard(loadingCard);
 
   signInAnon()
     .then(() => {
+      registerAutoRemove(entityId);
       watchId = navigator.geolocation.watchPosition(onPosition, onGeoError, {
         enableHighAccuracy: true,
         maximumAge: 0,
@@ -112,6 +121,7 @@ function stopSharing() {
     unsubscribe = null;
   }
   removeEntity(entityId);
+  cancelAutoRemove(entityId);
   if (mapState) {
     mapState.map.remove();
     mapState = null;
@@ -177,12 +187,13 @@ function renderAll() {
     .map((e) => {
       const icon = e.role === "emergency" ? (e.subrole === "fire" ? "🚒" : "🚑") : "🚗";
       const speedText = typeof e.speedKmh === "number" ? `${Math.round(e.speedKmh)} km/h` : "";
+      const plateText = e.vehicleNumber ? ` · ${escapeHtml(e.vehicleNumber)}` : "";
       const close = e.distance <= CLOSE_ALERT_M;
       return `
         <div class="child-row">
           <div>
             <div class="child-row-name">${icon} ${escapeHtml(e.name || "Vehicle")}</div>
-            <div class="child-row-meta">${speedText}</div>
+            <div class="child-row-meta">${speedText}${plateText}</div>
           </div>
           <span class="child-row-status ${close ? "stale" : "online"}">${Math.round(e.distance)}m</span>
         </div>
