@@ -38,6 +38,17 @@ let emergencyActive = false;
 let mapState = null;
 let lastZones = [];
 
+/* Prefill from a saved profile, if this browser has one */
+const savedProfile = loadProfile("rs_emergency_profile");
+if (savedProfile) {
+  vehicleNameInput.value = savedProfile.name || "";
+  if (savedProfile.subrole === "fire") {
+    subrole = "fire";
+    ambulanceBtn.classList.remove("selected");
+    fireBtn.classList.add("selected");
+  }
+}
+
 /* ---- Vehicle type toggle ---- */
 [ambulanceBtn, fireBtn].forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -69,10 +80,13 @@ function startBroadcasting() {
   }
   vehicleNameInput.style.borderColor = "";
 
+  saveProfile("rs_emergency_profile", { name, subrole });
+
   showCard(loadingCard);
 
   signInAnon()
     .then(() => {
+      registerAutoRemove(entityId);
       watchId = navigator.geolocation.watchPosition(onPosition, onGeoError, {
         enableHighAccuracy: true,
         maximumAge: 0,
@@ -179,6 +193,7 @@ function stopBroadcasting() {
     unsubscribe = null;
   }
   removeEntity(entityId);
+  cancelAutoRemove(entityId);
   if (mapState) {
     mapState.map.remove();
     mapState = null;
