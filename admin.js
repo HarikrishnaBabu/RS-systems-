@@ -31,9 +31,38 @@ const driverCount = document.getElementById("driverCount");
 const pedCount = document.getElementById("pedCount");
 const emergencyCount = document.getElementById("emergencyCount");
 const entityList = document.getElementById("entityList");
+const roleFilterRow = document.getElementById("roleFilterRow");
+const searchInput = document.getElementById("searchInput");
+const clearStaleBtn = document.getElementById("clearStaleBtn");
 
 let mapState = null;
 let unsubscribe = null;
+let latestEntitiesCache = {};
+let activeFilter = "all";
+let refreshTimer = null;
+
+/* ---- Role filter chips ---- */
+roleFilterRow.querySelectorAll(".filter-chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    activeFilter = chip.dataset.filter;
+    roleFilterRow.querySelectorAll(".filter-chip").forEach((c) => c.classList.toggle("selected", c === chip));
+    renderAll(latestEntitiesCache);
+  });
+});
+
+/* ---- Search box ---- */
+searchInput.addEventListener("input", () => renderAll(latestEntitiesCache));
+
+/* ---- Manual cleanup for anything onDisconnect somehow missed ---- */
+const STALE_THRESHOLD_MS = 2 * 60 * 1000;
+clearStaleBtn.addEventListener("click", () => {
+  const staleIds = Object.keys(latestEntitiesCache).filter((id) => {
+    const e = latestEntitiesCache[id];
+    return e && Date.now() - (e.updatedAt || 0) > STALE_THRESHOLD_MS;
+  });
+  if (staleIds.length === 0) return;
+  staleIds.forEach((id) => db.ref(`entities/${id}`).remove());
+});
 
 /* -----------------------------------------------------------
    LOGIN / LOGOUT
@@ -79,6 +108,10 @@ auth.onAuthStateChanged((user) => {
       unsubscribe();
       unsubscribe = null;
     }
+    if (refreshTimer) {
+      clearInterval(refreshTimer);
+      refreshTimer = null;
+    }
   }
 });
 
@@ -89,8 +122,14 @@ function connect() {
   showCard(dashboardCard);
   initMap();
   unsubscribe = subscribeEntities((entities) => {
+    latestEntitiesCache = entities;
     renderAll(entities);
   });
+
+  // Refresh the list periodically even without new data, so "last
+  // seen X ago" text and stale/live status stay current in real time.
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(() => renderAll(latestEntitiesCache), 5000);
 }
 
 function initMap() {
@@ -118,28 +157,41 @@ function showError(msg) {
    RENDER: counts, map markers, and the tappable list
    ----------------------------------------------------------- */
 function renderAll(entities) {
-  const list = Object.keys(entities)
+  const allList = Object.keys(entities)
     .map((id) => ({ id, ...entities[id] }))
     .filter((e) => typeof e.lat === "number" && typeof e.lng === "number");
 
-  const drivers = list.filter((e) => e.role === "driver");
-  const peds = list.filter((e) => e.role === "pedestrian");
-  const emergencies = list.filter((e) => e.role === "emergency");
+  // ---- Counts always reflect everyone, regardless of filter/search ----
+  const drivers = allList.filter((e) => e.role === "driver");
+  const peds = allList.filter((e) => e.role === "pedestrian");
+  const emergencies = allList.filter((e) => e.role === "emergency");
   driverCount.textContent = `🚗 ${drivers.length}`;
   pedCount.textContent = `🚶 ${peds.length}`;
   emergencyCount.textContent = `🚨 ${emergencies.length}`;
 
+  // ---- Map shows everyone, unaffected by list filter/search ----
   if (mapState) {
-    updateEntityMarkers(mapState, list);
-    if (!mapState.hasFitOnce && list.length > 0) {
-      const latLngs = list.map((e) => [e.lat, e.lng]);
+    updateEntityMarkers(mapState, allList);
+    if (!mapState.hasFitOnce && allList.length > 0) {
+      const latLngs = allList.map((e) => [e.lat, e.lng]);
       mapState.map.fitBounds(L.latLngBounds(latLngs), { padding: [30, 30] });
       mapState.hasFitOnce = true;
     }
   }
 
+  // ---- List: apply role filter + search ----
+  const query = searchInput.value.trim().toLowerCase();
+  const list = allList.filter((e) => {
+    if (activeFilter !== "all" && e.role !== activeFilter) return false;
+    if (query) {
+      const haystack = `${e.name || ""} ${e.vehicleNumber || ""}`.toLowerCase();
+      if (!haystack.includes(query)) return false;
+    }
+    return true;
+  });
+
   if (list.length === 0) {
-    entityList.innerHTML = `<p style="color:var(--text-muted); padding:16px 0;">No one is currently connected to the network.</p>`;
+    entityList.innerHTML = `<p style="color:var(--text-muted); padding:16px 0;">No matching entities right now.</p>`;
     return;
   }
 
@@ -148,15 +200,17 @@ function renderAll(entities) {
       const icon =
         e.role === "emergency" ? (e.subrole === "fire" ? "🚒" : "🚑") : e.role === "pedestrian" ? "🚶" : "🚗";
       const speedText = typeof e.speedKmh === "number" ? `${Math.round(e.speedKmh)} km/h` : "";
+      const plateText = e.vehicleNumber ? ` · ${escapeHtml(e.vehicleNumber)}` : "";
       const activeTag = e.role === "emergency" && e.emergencyActive ? " · 🚨 ACTIVE" : "";
       const staleMs = Date.now() - (e.updatedAt || 0);
       const isStale = staleMs > 2 * 60 * 1000;
+      const lastSeenText = formatLastSeen(staleMs);
 
       return `
         <div class="child-row" data-id="${e.id}">
           <div>
             <div class="child-row-name">${icon} ${escapeHtml(e.name || e.role)}</div>
-            <div class="child-row-meta">${speedText}${activeTag}</div>
+            <div class="child-row-meta">${speedText}${plateText}${activeTag} · last seen ${lastSeenText}</div>
           </div>
           <span class="child-row-status ${isStale ? "stale" : "online"}">${isStale ? "Stale" : "Live"}</span>
         </div>
@@ -171,6 +225,17 @@ function renderAll(entities) {
       if (e && mapState) mapState.map.setView([e.lat, e.lng], 17);
     });
   });
+}
+
+/* Turn a millisecond age into a short "Xs ago" / "Xm ago" string */
+function formatLastSeen(ms) {
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 5) return "just now";
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ago`;
 }
 
 function escapeHtml(str) {
