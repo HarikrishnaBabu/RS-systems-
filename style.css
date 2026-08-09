@@ -501,6 +501,33 @@ body {
 }
 
 /* =========================================================
+   ADMIN FILTER CHIPS
+   ========================================================= */
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.filter-chip {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.filter-chip.selected {
+  border-color: var(--accent-blue);
+  background: rgba(59, 130, 246, 0.15);
+  color: #bfdbfe;
+}
+
+/* =========================================================
    LEAFLET MAP CONTAINER
    ========================================================= */
 .map-container {
