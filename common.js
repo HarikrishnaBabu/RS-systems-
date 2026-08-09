@@ -144,6 +144,63 @@ function updateZoneMarkers(mapState, zones) {
   });
 }
 /* -----------------------------------------------------------
+   AUTO-REMOVE ON DISCONNECT
+   ---------------------------------------------------------------
+   This is the reliable way to make an entity disappear when the
+   app closes — far more dependable than listening for
+   "beforeunload" in JS, which mobile browsers frequently skip
+   entirely (tab killed by the OS, app swiped away, connection
+   just drops, etc). Firebase's Realtime Database tracks the
+   client's live connection itself and runs this removal
+   SERVER-SIDE the moment it notices the client is gone, so it
+   works even if the page never gets a chance to run any of its
+   own JavaScript on the way out.
+   ----------------------------------------------------------- */
+function registerAutoRemove(entityId) {
+  try {
+    db.ref(`entities/${entityId}`).onDisconnect().remove();
+  } catch (err) {
+    console.error("Failed to register auto-remove:", err);
+  }
+}
+
+/* Cancel a pending auto-remove — call this after a clean manual stop,
+   so the disconnect handler doesn't fire pointlessly later. */
+function cancelAutoRemove(entityId) {
+  try {
+    db.ref(`entities/${entityId}`).onDisconnect().cancel();
+  } catch (err) {
+    console.error("Failed to cancel auto-remove:", err);
+  }
+}
+
+/* -----------------------------------------------------------
+   LOCAL PROFILE STORAGE
+   ---------------------------------------------------------------
+   Remembers what someone typed (name, vehicle number, etc.) in
+   this browser so they don't have to retype it every visit.
+   Stored only on this device via localStorage — never sent
+   anywhere, separate from the live Firebase broadcast.
+   ----------------------------------------------------------- */
+function saveProfile(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (err) {
+    console.error("Failed to save profile locally:", err);
+  }
+}
+
+function loadProfile(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    console.error("Failed to load saved profile:", err);
+    return null;
+  }
+}
+
+/* -----------------------------------------------------------
    A random-ish but stable ID for this browser tab's session,
    used as this entity's key in Firebase. Regenerated each visit
    — this is a lightweight demo system, not an account system.
