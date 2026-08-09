@@ -16,6 +16,7 @@ const errorMessage = document.getElementById("errorMessage");
 const dashboardCard = document.getElementById("dashboardCard");
 
 const driverNameInput = document.getElementById("driverName");
+const vehicleNumberInput = document.getElementById("vehicleNumber");
 const shareBtn = document.getElementById("shareBtn");
 const retryBtn = document.getElementById("retryBtn");
 const stopBtn = document.getElementById("stopBtn");
@@ -46,6 +47,16 @@ let headingKnown = false;
 let mapState = null; // Leaflet map state, created on first position fix
 
 /* -----------------------------------------------------------
+   Prefill from a saved profile, if this browser has one from a
+   previous visit, so the driver doesn't have to retype it.
+   ----------------------------------------------------------- */
+const savedProfile = loadProfile("rs_driver_profile");
+if (savedProfile) {
+  driverNameInput.value = savedProfile.name || "";
+  vehicleNumberInput.value = savedProfile.vehicleNumber || "";
+}
+
+/* -----------------------------------------------------------
    START
    ----------------------------------------------------------- */
 function startDriving() {
@@ -63,10 +74,16 @@ function startDriving() {
   }
   driverNameInput.style.borderColor = "";
 
+  const vehicleNumber = vehicleNumberInput.value.trim();
+
+  // Remember this for next time
+  saveProfile("rs_driver_profile", { name, vehicleNumber });
+
   showCard(loadingCard);
 
   signInAnon()
     .then(() => {
+      registerAutoRemove(entityId); // disappear from the map if this tab/app closes or crashes
       watchId = navigator.geolocation.watchPosition(onPosition, onGeoError, {
         enableHighAccuracy: true,
         maximumAge: 0,
@@ -127,7 +144,8 @@ function onPosition(position) {
   // ---- Broadcast to the network ----
   writeEntity(entityId, {
     role: "driver",
-    name,
+    name: driverNameInput.value.trim(),
+    vehicleNumber: vehicleNumberInput.value.trim(),
     lat: latitude,
     lng: longitude,
     heading: myHeading,
@@ -157,6 +175,7 @@ function stopDriving() {
     unsubscribe = null;
   }
   removeEntity(entityId);
+  cancelAutoRemove(entityId);
   if (mapState) {
     mapState.map.remove();
     mapState = null;
