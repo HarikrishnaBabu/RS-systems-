@@ -30,11 +30,20 @@
         and hospital zones to warn you as you approach.
       </p>
 
-      <label class="field-label" for="driverName">Driver name</label>
-      <input type="text" id="driverName" class="text-input" placeholder="e.g. Hari" autocomplete="off" />
+      <label class="field-label" for="driverName">Driver name (CAPS)</label>
+      <input type="text" id="driverName" class="text-input" placeholder="E.G. HARI" autocomplete="off" />
 
-      <label class="field-label" for="vehicleNumber">Vehicle number</label>
-      <input type="text" id="vehicleNumber" class="text-input" placeholder="e.g. TN09 AB 1234" autocomplete="off" />
+      <label class="field-label" for="vehicleNumber">Vehicle number (CAPS)</label>
+      <input type="text" id="vehicleNumber" class="text-input" placeholder="E.G. TN12AR5375" autocomplete="off" />
+      <p id="plateError" class="hidden" style="color:var(--accent-red); font-size:0.8rem; margin-top:-10px; margin-bottom:12px;"></p>
+      <a id="verifyPlateLink" href="#" target="_blank" rel="noopener" class="hidden" style="display:inline-block; color:var(--accent-cyan); font-size:0.82rem; margin-top:-8px; margin-bottom:14px;">🔍 Verify this plate on carinfo.app ↗</a>
+
+      <label class="field-label">Vehicle type</label>
+      <div class="subrole-grid" style="grid-template-columns: repeat(3, 1fr);">
+        <button type="button" class="subrole-btn selected" id="carBtn" data-vtype="car">🚗 Car</button>
+        <button type="button" class="subrole-btn" id="motorcycleBtn" data-vtype="motorcycle">🏍️ Bike</button>
+        <button type="button" class="subrole-btn" id="bicycleBtn" data-vtype="bicycle">🚴 Cycle</button>
+      </div>
 
       <button id="shareBtn" class="btn btn-primary">📡 Start Driving Mode</button>
     </section>
@@ -66,10 +75,10 @@
       <div class="radar-wrap">
         <svg id="radarSvg" viewBox="0 0 320 320" width="100%"></svg>
         <div class="radar-legend">
-          <span><span class="legend-swatch" style="background:#3b82f6"></span> Vehicle</span>
-          <span><span class="legend-swatch" style="background:#f59e0b"></span> Pedestrian</span>
-          <span><span class="legend-swatch" style="background:#ef4444"></span> Emergency</span>
-          <span><span class="legend-swatch" style="background:#22d3ee"></span> You</span>
+          <span><span class="legend-swatch" style="background:#2ee6ff"></span> Vehicle</span>
+          <span><span class="legend-swatch" style="background:#ffb703"></span> Pedestrian</span>
+          <span><span class="legend-swatch" style="background:#ff3b64"></span> Emergency</span>
+          <span><span class="legend-swatch" style="background:#2ee6ff"></span> You</span>
         </div>
       </div>
 
