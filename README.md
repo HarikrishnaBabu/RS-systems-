@@ -1,4 +1,3 @@
-
 # Road Safety Network — Driver / Pedestrian / Emergency Vehicle
 
 A browser-based demo of V2X (vehicle-to-everything) safety concepts,
@@ -24,24 +23,37 @@ certified safety system.
 
 ## What each role does
 
-- **Driver**: shares live lat/lng/heading/speed as `role: "driver"`.
-  Sees every other entity plotted on a "heading-up" relative radar
-  (you're always centered, pointing up; others are placed by real
-  bearing + distance). Also queries OpenStreetMap's free Overpass API
-  for nearby schools/hospitals and shows a zone banner when close, and
-  flags anything in a forward collision-risk cone.
+- **Driver**: shares live lat/lng/heading/speed as `role: "driver"`,
+  with a selectable **vehicle type** (Car 🚗 / Motorcycle 🏍️ / Bicycle
+  🚴) that shows on everyone's radar/map. Sees every other entity
+  plotted on a "heading-up" relative radar (you're always centered,
+  pointing up; others are placed by real bearing + distance). Also
+  queries OpenStreetMap's free Overpass API for nearby schools/
+  hospitals AND merges in any zones the admin has manually placed
+  (including construction zones), showing a banner — spoken aloud via
+  the browser's built-in voice synthesis — as you approach. Name and
+  vehicle number fields are CAPS-only; the vehicle number is checked
+  against the standard Indian plate format (e.g. `TN12AR5375`) with a
+  one-tap manual-verification link to carinfo.app (see the note above
+  on why this can't be fully automated from a static site).
 - **Pedestrian**: shares position as `role: "pedestrian"`, sees a
-  distance-sorted list of nearby vehicles, with a banner when one is
-  very close.
+  distance-sorted list of nearby vehicles, with a spoken + visual
+  banner when one is very close or an active emergency vehicle is
+  nearby.
 - **Emergency Vehicle**: shares position as `role: "emergency"` with
   a `subrole` of `ambulance` or `fire`. Toggling **Emergency Mode ON**
-  sets `emergencyActive: true`, which is what triggers the "pull over"
-  banner on nearby drivers/pedestrians.
+  sets `emergencyActive: true` (with a spoken confirmation), which is
+  what triggers the "pull over" banner — also spoken — on nearby
+  drivers/pedestrians.
 - **Live Network Monitor (admin.html)**: a combined view of everyone
   on the network at once, on one map with a filterable/searchable
-  list. Requires signing in with a real Firebase email/password
-  account (reuse the same admin account as the family tracker, if
-  applicable) — see "Admin login" below.
+  list, "last seen" timestamps, and manual stale-entry cleanup.
+  Requires signing in with a real Firebase email/password account
+  (reuse the same admin account as the family tracker, if
+  applicable) — see "Admin login" below. Also where zones get added:
+  pick School/Hospital/Construction, tap "Place on Map," then click
+  the map to drop it — that zone immediately starts showing up in
+  every driver's zone alerts.
 
 ## Data flow
 
@@ -79,6 +91,10 @@ full click-by-click steps). Either way:
       "entities": {
         ".read": "auth != null",
         ".write": "auth != null"
+      },
+      "customZones": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.email == 'YOUR_ADMIN_EMAIL_HERE'"
       }
     }
   }
@@ -86,8 +102,34 @@ full click-by-click steps). Either way:
 
   This means: anyone who has signed in anonymously (i.e. anyone who
   opened one of the role pages) can read and write the shared
-  entities list. That's intentional for this "public safety broadcast"
+  entities list, and can read admin-placed zones (so drivers get
+  warned about them) — but only your admin login can add/remove
+  zones. That's intentional for this "public safety broadcast"
   concept — don't reuse it for private data.
+
+  Replace `YOUR_ADMIN_EMAIL_HERE` with your actual admin email. If
+  you're reusing the same Firebase project as the family tracker,
+  merge this in alongside your existing `/locations` rules rather
+  than replacing the whole rules block — e.g.:
+
+  ```json
+  {
+    "rules": {
+      "locations": {
+        ".read": "auth != null && auth.token.email == 'YOUR_ADMIN_EMAIL_HERE'",
+        ".write": "auth != null"
+      },
+      "entities": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      },
+      "customZones": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.email == 'YOUR_ADMIN_EMAIL_HERE'"
+      }
+    }
+  }
+  ```
 
 ### Admin login
 
@@ -126,6 +168,36 @@ All the distance/radius thresholds are constants near the top of
 `driver.js`, `pedestrian.js`, and `emergency.js` — e.g.
 `RADAR_RANGE_M`, `RISK_DISTANCE_M`, `ZONE_ALERT_DISTANCE_M`,
 `EMERGENCY_ALERT_DISTANCE_M` — adjust these to taste.
+
+## Voice alerts
+
+Uses the browser's built-in Speech Synthesis API — free, no key, no
+network call, works offline once the page is loaded. Two things worth
+knowing:
+
+- **Needs a user tap first.** Most mobile browsers (especially iOS
+  Safari) block audio, including speech synthesis, until the user has
+  interacted with the page at least once. Tapping "Start Driving
+  Mode" / "Start Sharing" / "Start Broadcasting" counts as that
+  interaction, so voice alerts should work fine after that — but
+  won't fire before the user has tapped anything.
+- **Throttled per alert type**, not per occurrence — see
+  `speakAlert()` in `common.js`. Each alert category (school zone,
+  emergency approach, collision risk, etc.) has its own cooldown so a
+  sustained situation re-announces occasionally rather than repeating
+  every single render.
+
+## Vehicle plate handling
+
+`isValidPlateFormat()` in `common.js` checks against the standard
+Indian RTO plate pattern (2 letters, 1–2 digits, 1–3 letters, 4
+digits — e.g. `TN12AR5375`). This is a **format** check only, not a
+registration check — see the caveat under Production-readiness notes
+below for why real verification isn't achievable from a static site,
+and what `buildCarinfoUrl()` offers instead (a one-tap manual lookup
+link). If you're deploying this outside India, swap
+`VEHICLE_PLATE_REGEX` for your region's format, or remove the check
+entirely.
 
 ## Ideas for extending further
 
@@ -175,6 +247,14 @@ understanding the difference before relying on it for anything real.
 - **Identity.** Anyone can type any name or vehicle number — there's
   no verification. Fine for a demo/community tool, not for anything
   where impersonation matters.
+- **Vehicle registration is unverified.** The plate field only checks
+  *format*, not whether that vehicle is actually registered. Real
+  verification needs a licensed government/RTO data API and a backend
+  server to query it — not achievable from a static site due to
+  browser cross-origin restrictions (CORS) and the legal/reliability
+  risk of scraping a third-party site without permission. The
+  "Verify on carinfo.app" link is a manual convenience, not automated
+  enforcement — someone could still type a fake plate and proceed.
 - **Offline/no-internet operation.** Everything here depends on real
   internet connectivity to Firebase. True offline mesh (Bluetooth/
   WiFi Direct) isn't achievable from a browser — see the note in this
