@@ -1,8 +1,16 @@
 /* =============================================================
    FIREBASE CONFIG
    ---------------------------------------------------------------
-   Shared by driver.html, pedestrian.html, and emergency.html.
-   Reuses the same Firebase project as the family location tracker.
+   You can reuse the SAME Firebase project you already created
+   for the family location tracker — just add the new database
+   rules below (this system uses a different data path: /entities
+   instead of /locations, so it won't conflict).
+
+   Get these values from:
+   Firebase Console → Project Settings → General → "Your apps"
+   → select your web app → SDK setup and configuration → "Config"
+   (make sure you pick the <script>-tag / "Config" option, NOT
+   the npm/import snippet).
    ============================================================= */
 
 const firebaseConfig = {
@@ -15,9 +23,7 @@ const firebaseConfig = {
   appId: "1:331325231349:web:60b113a8ec0cc6a89c35bc",
 };
 
-// Initialize Firebase (uses the compat/global SDK loaded via <script> tags)
 firebase.initializeApp(firebaseConfig);
 
-// Shared handles used by driver.js, pedestrian.js, emergency.js, and common.js
 const auth = firebase.auth();
 const db = firebase.database();
