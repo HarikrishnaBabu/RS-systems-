@@ -56,6 +56,16 @@ const ROLE_ICONS_BY_SUBROLE = {
   fire: "🚒",
 };
 
+/* Icon per vehicle type for driver entities specifically */
+const VEHICLE_TYPE_ICONS = { car: "🚗", motorcycle: "🏍️", bicycle: "🚴" };
+
+function iconForEntity(e) {
+  if (e.role === "emergency") return ROLE_ICONS_BY_SUBROLE[e.subrole] || "🚨";
+  if (e.role === "pedestrian") return "🚶";
+  if (e.role === "driver") return VEHICLE_TYPE_ICONS[e.vehicleType] || "🚗";
+  return "❓";
+}
+
 /* Create a Leaflet map inside the given container id, centered on
    the given starting position. Returns a small state object used
    by updateEntityMap() to keep markers in sync on later calls. */
@@ -95,8 +105,7 @@ function updateEntityMarkers(mapState, entities) {
 
   entities.forEach((e) => {
     activeIds.add(e.id);
-    const emoji =
-      e.role === "emergency" ? ROLE_ICONS_BY_SUBROLE[e.subrole] || "🚨" : ROLE_ICONS_BY_SUBROLE[e.role] || "❓";
+    const emoji = iconForEntity(e);
     const color = ROLE_COLORS[e.role] || "#94a3b8";
 
     if (!mapState.entityMarkers[e.id]) {
@@ -117,22 +126,25 @@ function updateEntityMarkers(mapState, entities) {
   });
 }
 
-/* Plot school/hospital zones (from getNearbyZones) as static markers.
+/* Plot school/hospital/construction zones as static markers.
    Keyed by a stable-ish string since Overpass elements don't have a
-   simple short ID we've kept around. */
+   simple short ID, and custom (admin-added) zones pass their own id. */
 function updateZoneMarkers(mapState, zones) {
+  const ZONE_EMOJI = { school: "🏫", hospital: "🏥", construction: "🚧" };
+  const ZONE_COLOR = { school: "#f59e0b", hospital: "#3b82f6", construction: "#f97316" };
+
   const activeKeys = new Set();
   (zones || []).forEach((z) => {
-    const key = `${z.type}-${z.lat.toFixed(5)}-${z.lng.toFixed(5)}`;
+    const key = z.id || `${z.type}-${z.lat.toFixed(5)}-${z.lng.toFixed(5)}`;
     activeKeys.add(key);
     if (!mapState.zoneMarkers[key]) {
-      const emoji = z.type === "school" ? "🏫" : "🏥";
-      const color = z.type === "school" ? "#f59e0b" : "#3b82f6";
+      const emoji = ZONE_EMOJI[z.type] || "📍";
+      const color = ZONE_COLOR[z.type] || "#94a3b8";
       mapState.zoneMarkers[key] = L.marker([z.lat, z.lng], {
         icon: emojiDivIcon(emoji, color),
         opacity: 0.85,
       })
-        .bindPopup(z.name)
+        .bindPopup(z.name || z.type)
         .addTo(mapState.map);
     }
   });
@@ -143,6 +155,95 @@ function updateZoneMarkers(mapState, zones) {
     }
   });
 }
+/* -----------------------------------------------------------
+   UPPERCASE-ONLY INPUT
+   ---------------------------------------------------------------
+   Forces a text input to auto-uppercase as the user types, used
+   for name and vehicle number fields.
+   ----------------------------------------------------------- */
+function forceUppercase(inputEl) {
+  inputEl.addEventListener("input", () => {
+    const pos = inputEl.selectionStart;
+    inputEl.value = inputEl.value.toUpperCase();
+    inputEl.setSelectionRange(pos, pos);
+  });
+}
+
+/* -----------------------------------------------------------
+   INDIAN VEHICLE PLATE FORMAT CHECK
+   ---------------------------------------------------------------
+   This only validates the FORMAT (e.g. TN12AR5375), not whether
+   the vehicle is actually registered — that would require a real
+   government/RTO data source and a backend, which a static site
+   can't provide. See buildCarinfoUrl() for a manual-verification
+   link instead.
+   ----------------------------------------------------------- */
+const VEHICLE_PLATE_REGEX = /^[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{4}$/;
+
+function isValidPlateFormat(plate) {
+  return VEHICLE_PLATE_REGEX.test(plate.replace(/\s+/g, ""));
+}
+
+function buildCarinfoUrl(plate) {
+  const clean = plate.replace(/\s+/g, "").toUpperCase();
+  return `https://www.carinfo.app/rto-vehicle-registration-detail/rto-details/${clean}`;
+}
+
+/* -----------------------------------------------------------
+   VOICE ALERTS
+   ---------------------------------------------------------------
+   Uses the browser's built-in Speech Synthesis API (free, no
+   key, no network call). Throttled per "key" so a sustained
+   alert (e.g. still in a school zone) re-announces occasionally
+   rather than spamming on every render.
+   ----------------------------------------------------------- */
+const lastSpokenAt = {};
+
+function speakAlert(key, text, cooldownMs = 15000) {
+  if (!("speechSynthesis" in window)) return;
+  const now = Date.now();
+  if (lastSpokenAt[key] && now - lastSpokenAt[key] < cooldownMs) return;
+  lastSpokenAt[key] = now;
+  try {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    window.speechSynthesis.speak(utterance);
+  } catch (err) {
+    console.error("Voice alert failed:", err);
+  }
+}
+
+/* -----------------------------------------------------------
+   CUSTOM ZONES (admin-added hospital/school/construction areas)
+   ---------------------------------------------------------------
+   Separate from the automatic OpenStreetMap zone lookup — these
+   are manually placed by the admin and stored under /customZones.
+   ----------------------------------------------------------- */
+function writeCustomZone(id, data) {
+  try {
+    db.ref(`customZones/${id}`).set(data);
+  } catch (err) {
+    console.error("Failed to write custom zone:", err);
+  }
+}
+
+function removeCustomZone(id) {
+  try {
+    db.ref(`customZones/${id}`).remove();
+  } catch (err) {
+    console.error("Failed to remove custom zone:", err);
+  }
+}
+
+function subscribeCustomZones(callback) {
+  const ref = db.ref("customZones");
+  const listener = ref.on("value", (snapshot) => {
+    callback(snapshot.val() || {});
+  });
+  return () => ref.off("value", listener);
+}
+
 /* -----------------------------------------------------------
    AUTO-REMOVE ON DISCONNECT
    ---------------------------------------------------------------
