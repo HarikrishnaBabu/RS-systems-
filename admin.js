@@ -34,6 +34,52 @@ const entityList = document.getElementById("entityList");
 const roleFilterRow = document.getElementById("roleFilterRow");
 const searchInput = document.getElementById("searchInput");
 const clearStaleBtn = document.getElementById("clearStaleBtn");
+const zoneTypeRow = document.getElementById("zoneTypeRow");
+const placeZoneBtn = document.getElementById("placeZoneBtn");
+const zoneList = document.getElementById("zoneList");
+
+let selectedZoneType = "school";
+let placingZone = false;
+let customZonesCache = {};
+let unsubscribeZones = null;
+
+/* ---- Zone type chips ---- */
+zoneTypeRow.querySelectorAll(".filter-chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    selectedZoneType = chip.dataset.ztype;
+    zoneTypeRow.querySelectorAll(".filter-chip").forEach((c) => c.classList.toggle("selected", c === chip));
+  });
+});
+
+/* ---- Place-zone toggle + map click handling ---- */
+placeZoneBtn.addEventListener("click", () => {
+  placingZone = !placingZone;
+  placeZoneBtn.textContent = placingZone ? "📍 Tap the map now..." : "📍 Tap Map To Place";
+  placeZoneBtn.classList.toggle("active", placingZone);
+});
+
+function handleMapClickForZonePlacement(e) {
+  if (!placingZone) return;
+  const name = prompt(
+    `Name for this ${selectedZoneType} zone?`,
+    selectedZoneType === "school" ? "School" : selectedZoneType === "hospital" ? "Hospital" : "Construction Zone"
+  );
+  if (name === null) {
+    // User cancelled — leave placement mode on so they can try again
+    return;
+  }
+  const zoneId = generateEntityId();
+  writeCustomZone(zoneId, {
+    type: selectedZoneType,
+    name: name.trim() || selectedZoneType,
+    lat: e.latlng.lat,
+    lng: e.latlng.lng,
+    createdAt: Date.now(),
+  });
+  placingZone = false;
+  placeZoneBtn.textContent = "📍 Tap Map To Place";
+  placeZoneBtn.classList.remove("active");
+}
 
 let mapState = null;
 let unsubscribe = null;
@@ -108,6 +154,10 @@ auth.onAuthStateChanged((user) => {
       unsubscribe();
       unsubscribe = null;
     }
+    if (unsubscribeZones) {
+      unsubscribeZones();
+      unsubscribeZones = null;
+    }
     if (refreshTimer) {
       clearInterval(refreshTimer);
       refreshTimer = null;
@@ -125,6 +175,10 @@ function connect() {
     latestEntitiesCache = entities;
     renderAll(entities);
   });
+  unsubscribeZones = subscribeCustomZones((zones) => {
+    customZonesCache = zones;
+    renderZones();
+  });
 
   // Refresh the list periodically even without new data, so "last
   // seen X ago" text and stale/live status stay current in real time.
@@ -139,7 +193,8 @@ function initMap() {
     attribution: "&copy; OpenStreetMap contributors",
     maxZoom: 19,
   }).addTo(map);
-  mapState = { map, entityMarkers: {}, hasFitOnce: false };
+  mapState = { map, entityMarkers: {}, zoneMarkers: {}, hasFitOnce: false };
+  map.on("click", handleMapClickForZonePlacement);
   setTimeout(() => map.invalidateSize(), 200);
 }
 
@@ -236,6 +291,40 @@ function formatLastSeen(ms) {
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   return `${hours}h ago`;
+}
+
+/* -----------------------------------------------------------
+   ZONE LIST: admin-placed hospital/school/construction markers
+   ----------------------------------------------------------- */
+const ZONE_EMOJI = { school: "🏫", hospital: "🏥", construction: "🚧" };
+
+function renderZones() {
+  const zones = Object.keys(customZonesCache).map((id) => ({ id, ...customZonesCache[id] }));
+
+  if (mapState) updateZoneMarkers(mapState, zones);
+
+  if (zones.length === 0) {
+    zoneList.innerHTML = `<p style="color:var(--text-muted); padding:10px 0 16px;">No custom zones added yet.</p>`;
+    return;
+  }
+
+  zoneList.innerHTML = zones
+    .map(
+      (z) => `
+        <div class="child-row">
+          <div>
+            <div class="child-row-name">${ZONE_EMOJI[z.type] || "📍"} ${escapeHtml(z.name || z.type)}</div>
+            <div class="child-row-meta">${z.type}</div>
+          </div>
+          <button class="btn btn-secondary" style="width:auto; padding:5px 12px; font-size:0.75rem;" data-zone-id="${z.id}">🗑️ Remove</button>
+        </div>
+      `
+    )
+    .join("");
+
+  zoneList.querySelectorAll("[data-zone-id]").forEach((btn) => {
+    btn.addEventListener("click", () => removeCustomZone(btn.dataset.zoneId));
+  });
 }
 
 function escapeHtml(str) {
