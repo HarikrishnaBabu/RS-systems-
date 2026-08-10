@@ -13,6 +13,7 @@ const errorMessage = document.getElementById("errorMessage");
 const dashboardCard = document.getElementById("dashboardCard");
 
 const pedNameInput = document.getElementById("pedName");
+forceUppercase(pedNameInput);
 const shareBtn = document.getElementById("shareBtn");
 const retryBtn = document.getElementById("retryBtn");
 const stopBtn = document.getElementById("stopBtn");
@@ -168,12 +169,14 @@ function renderAll() {
     banners.push(
       `<div class="alert-banner danger">${icon} Emergency vehicle nearby (${Math.round(emergencyClose.distance)}m)</div>`
     );
+    speakAlert("ped-emergency", "Emergency vehicle nearby. Please stay clear.", 10000);
   }
   const closeVehicle = nearby.find((e) => e.role === "driver" && e.distance <= CLOSE_ALERT_M);
   if (closeVehicle) {
     banners.push(
       `<div class="alert-banner danger">⚠️ Vehicle close by (${Math.round(closeVehicle.distance)}m) — stay alert</div>`
     );
+    speakAlert("ped-vehicle-close", "Vehicle close by. Stay alert.", 8000);
   }
   alertsArea.innerHTML = banners.join("");
 
