@@ -14,6 +14,7 @@ const errorMessage = document.getElementById("errorMessage");
 const dashboardCard = document.getElementById("dashboardCard");
 
 const vehicleNameInput = document.getElementById("vehicleName");
+forceUppercase(vehicleNameInput);
 const ambulanceBtn = document.getElementById("ambulanceBtn");
 const fireBtn = document.getElementById("fireBtn");
 const shareBtn = document.getElementById("shareBtn");
@@ -64,6 +65,11 @@ emergencyToggle.addEventListener("click", () => {
   emergencyToggle.textContent = emergencyActive ? "🚨 Emergency Mode: ON" : "🚨 Emergency Mode: OFF";
   emergencyToggle.classList.toggle("active", emergencyActive);
   broadcastCurrentState();
+  speakAlert(
+    "emergency-toggle-" + emergencyActive,
+    emergencyActive ? "Emergency mode activated. Broadcasting priority." : "Emergency mode deactivated.",
+    0 // no cooldown — this is a deliberate one-off action, always announce it
+  );
 });
 
 function startBroadcasting() {
