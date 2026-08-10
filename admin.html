@@ -56,6 +56,19 @@
 
       <div id="map" class="map-container" style="height:320px;"></div>
 
+      <!-- ---------- Zone management ---------- -->
+      <div class="card" style="padding:16px; margin-bottom:14px;">
+        <p style="margin-bottom:10px;">Add a hospital, school, or construction zone to warn nearby drivers as they approach.</p>
+        <div class="filter-row" id="zoneTypeRow">
+          <button type="button" class="filter-chip selected" data-ztype="school">🏫 School</button>
+          <button type="button" class="filter-chip" data-ztype="hospital">🏥 Hospital</button>
+          <button type="button" class="filter-chip" data-ztype="construction">🚧 Construction</button>
+        </div>
+        <button id="placeZoneBtn" class="btn btn-toggle">📍 Tap Map To Place</button>
+      </div>
+
+      <div class="children-list" id="zoneList"></div>
+
       <!-- Filter + search controls -->
       <div class="filter-row" id="roleFilterRow">
         <button type="button" class="filter-chip selected" data-filter="all">All</button>
